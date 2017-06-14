@@ -1,0 +1,30 @@
+--First step, use final table of remits from both medical and pharmacy records, with remits connected to submits
+
+--need to join to grab billing provider info, rendering provider info, and payer info
+--added in a row for count of claims set to 1
+create table D_Amgen_EAll_Remit_ST2_counter as
+select ori.*
+,org.org_business_name
+,org.last_name as billing_lname
+,org.first_name as billing_fname
+,org.business_practice_location_address_city_name
+,org.business_practice_location_address_state_name
+,org.business_practice_location_address_postal_code
+,prov1.Provider_First_Name as first_name
+,prov1.Provider_Last_Name_Legal_Name as last_name
+,prov1.Provider_Business_Practice_Location_Address_City_Name as adr_city
+,prov1.Provider_Business_Practice_Location_Address_state_Name as adr_state
+,prov2.Provider_First_Name as rendering_fname
+,prov2.Provider_Last_Name_Legal_Name as rendering_lname
+,prov2.Provider_Business_Practice_Location_Address_City_Name as rendering_city
+,prov2.Provider_Business_Practice_Location_Address_state_Name as rendering_state
+,1 as number_of_claims
+from D_Amgen_EAll_Remit_ST1 ori
+--join to billing provider
+left join zzz_ref_facility_npis org
+on ori.billing_pr_npi = org.npi
+left join cmsnpi_latest prov1
+on ori.billing_pr_npi = prov1.npi
+--join to rendering provider
+left join cmsnpi_latest prov2
+on ori.rendering_pr_npi = prov2.npi
