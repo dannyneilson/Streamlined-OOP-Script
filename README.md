@@ -1,4 +1,4 @@
 # Streamlined-OOP-Script
-Combination of Danny and Ishan's OOP scripts
+This is Ishan's script
 
-This is the master file
+Please make changes here and review before requesting a pull to the Master file
