@@ -1,4 +1,4 @@
---First step, use final table of remits from both medical and pharmacy records, with remits connected to submits
+1)First step, use final table of remits from both medical and pharmacy records, with remits connected to submits
 
 --need to join to grab billing provider info, rendering provider info, and payer info
 --added in a row for count of claims set to 1
@@ -28,3 +28,166 @@ on ori.billing_pr_npi = prov1.npi
 --join to rendering provider
 left join cmsnpi_latest prov2
 on ori.rendering_pr_npi = prov2.npi
+
+
+2)this step assigns type of coverage and makes sure OOP amounts are set to 0 when null
+
+drop table if exists D_Amgen_EAll_Remit_ST2_counter_alltype;
+create table D_Amgen_EAll_Remit_ST2_counter_alltype as 
+select payer_claim_control_number
+,service_from_date
+,th_ndc
+,adjudicated_procedure_cd
+,th_procedure
+,case when Copayment_Amount > 0 then Copayment_Amount else 0 end as Copay
+,case when Coinsurance_Amount >0 then Coinsurance_Amount else 0 end as Coinsurance
+,case when Deductible_Amount >0 then Deductible_Amount else 0 end as Deductible
+, case when TYPE_OF_COVERAGE in ('17', 'ADAP', 'CSH', 'DME', 'ELG', 'INT', 'Null', Null) then 'Other Plan Type'
+when Type_of_Coverage in ('12', '13', '14', '15', 'CI', 'COM', 'HM', 'LM', 'WC', 'ZZ') then 'Commercial'
+when  Type_of_Coverage in ('16') then 'Medicare Advantage'
+when  Type_of_Coverage in ('CH', 'GOV', 'OF', 'VA') then 'VA or Other Government'
+when type_of_coverage in ('MA', 'MPAB')
+then 'Medicare A'
+when type_of_coverage in ('MB','MPB')
+then 'Medicare B'
+when type_of_coverage in ('MPD')
+then 'Medicare D'
+when type_of_coverage in ('MC', 'MCM', 'MED') then 'Medicaid'
+when type_of_coverage in ('SPAP', 'STATE') then 'State Plan'
+end as Plan_Type 
+from D_Amgen_EAll_Remit_ST2_counter;
+
+3)Combine together the OOP's to create Total OOP
+
+drop table if exists D_Amgen_EAll_Remit_ST2_counter_OOP_alltype;
+create table D_Amgen_EAll_Remit_ST2_counter_OOP_alltype as
+select *
+,(Copay+Coinsurance+Deductible) as OOP
+from D_Amgen_EAll_Remit_ST2_counter_alltype;
+
+4)Get number of claims and average OOP for all types of coverage
+
+select plan_type, sum(OOP), count(*), sum(OOP)/count(*)
+from D_Amgen_EAll_Remit_ST2_counter_OOP_alltype
+where OOP >0 
+group by plan_type
+
+5)Assigning patients who fall into a specified total OOP bin range over a certain time period, such as a year. 
+For example, across all tratments for Neulasta in 2016, patient 1d5tj paid $203 Total OOP. 
+
+drop table if exists DN_Amgen_OOP_050117_final_Neulasta_alltype;
+create table DN_Amgen_OOP_050117_final_Neulasta_alltype as
+select 
+payer_claim_control_number
+,service_from_date
+,plan_type
+--counts for patient bins
+      
+    ,case when OOP = 0 
+    then 1
+    else null
+   end as count_claims_0_oop
+   
+    
+    ,case when OOP < 50 and OOP !=0 
+    then 1
+    else null
+   end as count_claims_0to50_oop
+   
+   
+    ,case when OOP >= 50 and OOP < 100 
+    then 1
+    else null
+   end as count_claims_50to100_oop
+   
+     
+    ,case when OOP >= 100 and OOP < 150 
+    then 1
+    else null
+   end as count_claims_100to150_oop
+   
+   
+    ,case when OOP >= 150 and OOP < 200 
+    then 1
+    else null
+   end as count_claims_150to200_oop
+   
+   
+    ,case when OOP >= 200 and OOP < 250 
+    then 1
+    else null
+   end as count_claims_200to250_oop
+   
+    
+    ,case when OOP >= 250 and OOP < 300 
+    then 1
+    else null
+   end as count_claims_250to300_oop
+   
+ 
+    ,case when OOP >= 300 
+    then 1
+    else null
+   end as count_claims_300plus_oop      
+
+ from D_Amgen_EAll_Remit_ST2_counter_OOP_alltype;
+ 
+ 6)Getting count of claims for patients who fall into bins
+ 
+ drop table if exists DN_Amgen_OOP_050117_final_Neulasta_alltype;
+create table DN_Amgen_OOP_050117_final_Neulasta_alltype as
+select 
+payer_claim_control_number
+,service_from_date
+,plan_type
+--counts for patient bins
+      
+    ,case when OOP = 0 
+    then 1
+    else null
+   end as count_claims_0_oop
+   
+    
+    ,case when OOP < 50 and OOP !=0 
+    then 1
+    else null
+   end as count_claims_0to50_oop
+   
+   
+    ,case when OOP >= 50 and OOP < 100 
+    then 1
+    else null
+   end as count_claims_50to100_oop
+   
+     
+    ,case when OOP >= 100 and OOP < 150 
+    then 1
+    else null
+   end as count_claims_100to150_oop
+   
+   
+    ,case when OOP >= 150 and OOP < 200 
+    then 1
+    else null
+   end as count_claims_150to200_oop
+   
+   
+    ,case when OOP >= 200 and OOP < 250 
+    then 1
+    else null
+   end as count_claims_200to250_oop
+   
+    
+    ,case when OOP >= 250 and OOP < 300 
+    then 1
+    else null
+   end as count_claims_250to300_oop
+   
+ 
+    ,case when OOP >= 300 
+    then 1
+    else null
+   end as count_claims_300plus_oop      
+
+ from D_Amgen_EAll_Remit_ST2_counter_OOP_alltype;
+ 
